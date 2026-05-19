@@ -1,0 +1,493 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Eres un asistente médico de seguros.\n\nPaciente:\n{{$json.nombre}}\n\nPlan:\n{{$json.plan}}\n\nCobertura:\n{{$json.cobertura}}%\n\nCopago:\n${{$json.copago}}\n\nCiudad:\n{{$json.ciudad}}\n\nAnaliza el síntoma del usuario y recomienda especialidad médica y cruzando datos con su plan de seguro, le indica exactamente cuánto será su copago y qué hospital de la red le conviene más económicamente.\n\nresponde usando formato HTML compatible con Telegram.\n\nUsa únicamente:\n<b>, <i>, <u> y saltos de línea.\nNO uses markdown.\n\nResponde máximo en 15 líneas.\nSé claro, profesional y breve.\n\nSíntoma:\n{{$node[\"Telegram Trigger\"].json[\"message\"][\"text\"]}}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": []
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -112,
+        -368
+      ],
+      "id": "ac5c5fe6-0c9e-4141-acf8-14398d3c8a07",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        -48,
+        -560
+      ],
+      "id": "c6246544-248e-4e62-8c30-5e0538541ec8",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "GlPYV63L3e0JZF01",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}",
+        "text": "={{$json.text}}",
+        "additionalFields": {
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        -416
+      ],
+      "id": "42223619-358b-4ff2-983f-a5e26cd2222c",
+      "name": "Send a text message",
+      "webhookId": "e0bea935-e6b8-489a-9d07-7d8ffa154c94",
+      "credentials": {
+        "telegramApi": {
+          "id": "3MelaTrrwM3bSHt9",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -992,
+        -304
+      ],
+      "id": "72e18c0f-3614-4b9a-92ac-a9c528093015",
+      "name": "Telegram Trigger",
+      "webhookId": "901240f9-fd7b-4ee3-bc76-2287458fcd1b",
+      "credentials": {
+        "telegramApi": {
+          "id": "3MelaTrrwM3bSHt9",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "587bf2e6-3710-4961-8ae1-e8c2693194a6",
+              "leftValue": "={{$json.id}}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -336,
+        -336
+      ],
+      "id": "9e0627be-2325-4cef-bbb9-fa2ece121540",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "patients",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "telegram_id",
+              "condition": "eq",
+              "keyValue": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        -336
+      ],
+      "id": "22fcf209-dcac-477a-8095-e0bad254354b",
+      "name": "Get many rows",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "6MaZhXXSDfNd1rII",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "patients",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "policy_number",
+              "condition": "eq",
+              "keyValue": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"text\"]}}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "telegram_id",
+              "fieldValue": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        496,
+        192
+      ],
+      "id": "fc068453-8e63-4db9-8f03-494067371f52",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6MaZhXXSDfNd1rII",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "aaa7f5cd-b255-4a7e-bd65-2b5c98629101",
+              "leftValue": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"text\"]}}",
+              "rightValue": "/start",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        128,
+        112
+      ],
+      "id": "62bbb0b2-794e-4a93-89a5-bab0d12a51f2",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}",
+        "text": "Bienvenido 👋  Por favor ingresa tu número de póliza. Ejemplo: POL001",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        336,
+        -96
+      ],
+      "id": "20f91afb-3447-496c-909c-232f244dd5ee",
+      "name": "Send a text message2",
+      "webhookId": "2cc7e1b1-4e1a-4214-aa96-5dcebe509139",
+      "credentials": {
+        "telegramApi": {
+          "id": "3MelaTrrwM3bSHt9",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "patients",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "policy_number",
+              "condition": "eq",
+              "keyValue": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"text\"]}}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        352,
+        224
+      ],
+      "id": "22f0ff85-0341-4d15-b0ac-0e9f3cfb9d1f",
+      "name": "Get many rows1",
+      "credentials": {
+        "supabaseApi": {
+          "id": "6MaZhXXSDfNd1rII",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$node[\"Telegram Trigger\"].json[\"message\"][\"chat\"][\"id\"]}}",
+        "text": "✅ Registro completado correctamente.  Ya puedes escribir tus síntomas médicos.",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        48
+      ],
+      "id": "3668bf77-574c-4756-a2b8-3214a62b1335",
+      "name": "Send a text message3",
+      "webhookId": "d19f6ed2-b714-4aac-9818-a00a4348c9f5",
+      "credentials": {
+        "telegramApi": {
+          "id": "3MelaTrrwM3bSHt9",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "63e3df6b-f586-45df-9162-f25692add05d",
+              "leftValue": "={{$json.message.from.is_bot}}",
+              "rightValue": "false",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -752,
+        -256
+      ],
+      "id": "5f12f34c-afd3-4f99-bbe4-c54535f61fb3",
+      "name": "If1"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -7.961799924320216e+32,
+        -4.140925414516238e+32
+      ],
+      "typeVersion": 1,
+      "id": "0445f4bf-4211-4b07-af83-39878ad04b8e",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        -7.961799924320216e+32,
+        -4.140925414516238e+32
+      ],
+      "id": "34f85ada-89a9-4ebc-8ebf-46cb3517354f",
+      "name": "Analyze document"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "Send a text message3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Send a text message2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get many rows1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many rows1": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Get many rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "f680d3d7-4658-4b27-857d-1f6508954d74",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e68fe6de9adc3def234917d68535f806797ecc5361dc3508620c9e088bd52857"
+  },
+  "id": "foKbzpZSiPh3bfbw",
+  "tags": []
+}
